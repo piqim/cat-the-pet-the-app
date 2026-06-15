@@ -1,0 +1,15 @@
+{
+  "comment": "Clean transparent re-export of the adopted base cat (PRD v1.1 section 5.4). Authoritative source: cat-spritesheet-32x32.aseprite. Ship from this, never from the JPEG reference.",
+  "sprites": {
+    "cat_idle": {
+      "file": "cat_idle_sheet.png",
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "frameCount": 4,
+      "layout": "horizontal",
+      "fps": 10,
+      "loop": true,
+      "state": "idle"
+    }
+  }
+}

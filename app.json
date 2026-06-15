@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Cat The Pet",
+    "slug": "cat-the-pet",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.piqim.catthepet"
+    },
+    "assetBundlePatterns": [
+      "src/assets/**/*"
+    ],
+    "plugins": [
+      "expo-notifications"
+    ]
+  }
+}

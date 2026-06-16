@@ -3,12 +3,22 @@ import * as Haptics from 'expo-haptics';
 export type HapticPattern = 'paw' | 'chest' | 'chin' | 'forehead' | 'ear' | 'annoyed';
 
 export type HapticEngine = {
+  setEnabled: (enabled: boolean) => void;
   playPattern: (pattern: HapticPattern) => Promise<void>;
   stop: () => Promise<void>;
 };
 
+let hapticsEnabled = true;
+
 export const expoHapticEngine: HapticEngine = {
+  setEnabled(enabled) {
+    hapticsEnabled = enabled;
+  },
   async playPattern(pattern) {
+    if (!hapticsEnabled) {
+      return;
+    }
+
     switch (pattern) {
       case 'annoyed':
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

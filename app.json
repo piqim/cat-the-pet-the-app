@@ -2,19 +2,31 @@
   "expo": {
     "name": "Cat The Pet",
     "slug": "cat-the-pet",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.piqim.catthepet"
+      "bundleIdentifier": "com.piqim.catthepet",
+      "buildNumber": "1"
     },
     "assetBundlePatterns": [
       "src/assets/**/*"
     ],
     "plugins": [
-      "expo-notifications"
+      [
+        "expo-notifications",
+        {
+          "color": "#f2b65a"
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false
+        }
+      ]
     ]
   }
 }

@@ -9,10 +9,31 @@ export type CatAnimationState =
   | 'annoyed'
   | 'streakMilestone';
 
-export function getAnimationStateForZone(zoneId: PetZoneId | undefined): CatAnimationState {
-  if (!zoneId) {
-    return 'idle';
+export type AnimationInput = {
+  zoneId?: PetZoneId;
+  isStroke: boolean;
+  goodStrokeCount: number;
+  previousState: CatAnimationState;
+};
+
+const PURRING_PEAK_STROKES = 5;
+
+export function getAnimationStateForPet(input: AnimationInput): CatAnimationState {
+  if (!input.zoneId) {
+    return input.previousState === 'idle' ? 'idle' : 'noticing';
   }
 
-  return zoneId === 'eyes' ? 'annoyed' : 'beingPetted';
+  if (input.zoneId === 'eyes') {
+    return 'annoyed';
+  }
+
+  if (!input.isStroke) {
+    return input.previousState === 'idle' ? 'noticing' : input.previousState;
+  }
+
+  return input.goodStrokeCount >= PURRING_PEAK_STROKES ? 'purringPeak' : 'beingPetted';
+}
+
+export function getReleaseAnimationState(previousState: CatAnimationState): CatAnimationState {
+  return previousState === 'annoyed' ? 'annoyed' : 'postPet';
 }

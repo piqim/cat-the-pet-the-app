@@ -1,3 +1,20 @@
+/**
+ * @file Shop
+ * @module components/shop/Shop
+ *
+ * Modal shop for purchasing and equipping cosmetics (scenes, hats, collars).
+ * Spends coins via progressStore before recording ownership in cosmeticsStore.
+ *
+ * Edge cases:
+ * - Scene slot cannot be unequipped (always needs a backdrop).
+ * - spendPoints failure prevents purchase (unaffordable cards are disabled).
+ * - Locked items require unlockLevel; unaffordable require sufficient points.
+ * - equip does not validate ownership — getStatus guards before handlePress.
+ *
+ * Usage:
+ *   <Shop visible={shopVisible} onClose={() => setShopVisible(false)} />
+ */
+
 import { useMemo, useState } from 'react';
 import {
   Modal,
@@ -25,6 +42,7 @@ type ShopProps = {
 
 type CosmeticStatus = 'equipped' | 'owned' | 'buyable' | 'unaffordable' | 'locked';
 
+/** Cosmetic shop modal with category tabs and purchase/equip flow. */
 export function Shop({ visible, onClose }: ShopProps) {
   const [activeCategory, setActiveCategory] = useState<CosmeticCategory>('scene');
   const points = useProgressStore((state) => state.points);
@@ -41,6 +59,12 @@ export function Shop({ visible, onClose }: ShopProps) {
     [activeCategory],
   );
 
+  /**
+   * Determines the actionable state of a shop item for the current player.
+   *
+   * @param item - Cosmetic catalog entry.
+   * @returns Status driving card label, disabled state, and press handler.
+   */
   const getStatus = (item: Cosmetic): CosmeticStatus => {
     if (equipped[item.slot] === item.id) {
       return 'equipped';
@@ -57,6 +81,12 @@ export function Shop({ visible, onClose }: ShopProps) {
     return points >= item.pricePoints ? 'buyable' : 'unaffordable';
   };
 
+  /**
+   * Handles tap on a cosmetic card: unequip, equip owned, or buy + equip.
+   *
+   * @param item - Cosmetic that was tapped.
+   * @param status - Current status from getStatus.
+   */
   const handlePress = (item: Cosmetic, status: CosmeticStatus) => {
     if (status === 'equipped') {
       // Scenes always need a backdrop; only accessories can be removed.
@@ -143,6 +173,7 @@ type CosmeticCardProps = {
   onPress: () => void;
 };
 
+/** Single cosmetic card in the shop grid. */
 function CosmeticCard({ item, status, onPress }: CosmeticCardProps) {
   const disabled = status === 'locked' || status === 'unaffordable';
 
@@ -163,6 +194,7 @@ function CosmeticCard({ item, status, onPress }: CosmeticCardProps) {
   );
 }
 
+/** Status-dependent action label beneath each cosmetic card. */
 function CardActionLabel({ item, status }: { item: Cosmetic; status: CosmeticStatus }) {
   switch (status) {
     case 'equipped':

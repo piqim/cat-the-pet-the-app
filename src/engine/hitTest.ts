@@ -1,8 +1,30 @@
+/**
+ * @file hitTest
+ * @module engine/hitTest
+ *
+ * Defines pet-zone polygons on a 32×32 sprite grid and hit-tests touch points
+ * against them. Coordinates are scaled to the rendered cat size at runtime
+ * (see petController.toSpriteLocalPoint and PetZonesOverlay).
+ *
+ * Edge cases:
+ * - Zones are tested in array order — first match wins on overlap.
+ * - `eyes` is a negative zone (`isNegative: true`) triggering annoyed reaction.
+ * - Polygons can be non-rectangular; hit test uses ray-casting (even-odd rule).
+ * - Points outside all polygons return undefined (no zone).
+ * - Coordinate origin is top-left of the sprite; y increases downward.
+ *
+ * Usage:
+ *   const zone = hitTestPetZone({ x: 15, y: 18 }); // local sprite coords
+ *   // Adjust polygons in PET_ZONES, save, and use __DEV__ overlay to verify.
+ */
+
+/** A 2D point in sprite-local or screen space. */
 export type Point = {
   x: number;
   y: number;
 };
 
+/** Stable identifier for each pettable (or negative) body region. */
 export type PetZoneId =
   | 'leftPaw'
   | 'leftChest'
@@ -14,6 +36,12 @@ export type PetZoneId =
   | 'rightEar'
   | 'eyes';
 
+/**
+ * A tappable region on the cat sprite.
+ *
+ * @property polygon - Vertices on the 32×32 grid (clockwise or counter-clockwise).
+ * @property isNegative - When true, petting triggers annoyed state instead of reward.
+ */
 export type PetZone = {
   id: PetZoneId;
   label: string;
@@ -21,6 +49,11 @@ export type PetZone = {
   isNegative?: boolean;
 };
 
+/**
+ * All pet zones in hit-test priority order.
+ * Edit polygon coordinates here to tune zone positions; the __DEV__ overlay
+ * in PetScreen reflects changes on save via Fast Refresh.
+ */
 export const PET_ZONES: PetZone[] = [
   {
     id: 'eyes',
@@ -115,10 +148,23 @@ export const PET_ZONES: PetZone[] = [
   },
 ];
 
+/**
+ * Returns the first pet zone containing the given sprite-local point.
+ *
+ * @param point - Coordinates on the 32×32 sprite grid.
+ * @returns Matching zone, or undefined if the point misses all polygons.
+ */
 export function hitTestPetZone(point: Point): PetZone | undefined {
   return PET_ZONES.find((zone) => isPointInPolygon(point, zone.polygon));
 }
 
+/**
+ * Ray-casting point-in-polygon test (even-odd winding rule).
+ *
+ * @param point - Point to test.
+ * @param polygon - Closed polygon vertices (3+ points).
+ * @returns True if the point lies inside the polygon.
+ */
 function isPointInPolygon(point: Point, polygon: Point[]): boolean {
   let isInside = false;
 

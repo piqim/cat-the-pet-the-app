@@ -1,3 +1,28 @@
+/**
+ * @file progressStore
+ * @module stores/progressStore
+ *
+ * Core player progression: cat name, XP/level, coins, and daily streak.
+ * Persisted to MMKV (`progress-v2`) and synced to iCloud via cloudSyncService.
+ *
+ * Coin model uses monotonic counters (`lifetimePointsEarned`, `pointsSpent`) so
+ * two offline devices can merge without losing earnings or purchases. The
+ * spendable `points` field is derived: `max(0, earned - spent)`.
+ *
+ * Edge cases:
+ * - `petEnergy` and `lastRewardAt` are session-only (anti-grind); not persisted
+ *   or synced — each device/session starts with full energy.
+ * - `spendPoints(0)` or negative amounts succeed without mutation (no-op spend).
+ * - `spendPoints` returns false when balance is insufficient; Shop must check.
+ * - Legacy `progress-v1` saves are migrated once on first v2 hydration.
+ * - `registerDailyOpen` is idempotent within the same local calendar day.
+ * - `nameCat('')` falls back to `'Miso'`.
+ *
+ * Usage:
+ *   const { points, level } = useProgressStore();
+ *   useProgressStore.getState().grantPetReward(1.5);
+ */
+
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -7,18 +32,25 @@ import { computeRewardEnergy } from '../engine/antiGrind';
 import { evaluateStreak, getLocalDateKey, StreakResult } from '../services/streakService';
 import { zustandMmkvStorage } from './mmkvStorage';
 
+/** Result of {@link ProgressState.registerDailyOpen}, including any milestone bonus. */
 export type DailyOpenResult = StreakResult & {
   rewardPoints: number;
 };
 
+/**
+ * Progress store state and actions.
+ *
+ * @property points - Derived spendable balance. Do not set directly; updated by
+ *   grant/spend/migrate actions.
+ * @property lifetimePointsEarned - Monotonic total coins ever earned (sync-safe).
+ * @property pointsSpent - Monotonic total coins ever spent (sync-safe).
+ * @property petEnergy - Session anti-grind energy in [0, 1]. Not persisted.
+ * @property lastRewardAt - Timestamp of last reward grant. Not persisted.
+ */
 export type ProgressState = {
   catName: string;
   hasNamedCat: boolean;
-  // Derived spendable balance (lifetimePointsEarned - pointsSpent), kept in
-  // state so the UI can read it directly. Never mutate it on its own.
   points: number;
-  // Monotonic counters: these only ever increase, which lets two diverged
-  // devices reconcile via max() without losing earnings or purchases.
   lifetimePointsEarned: number;
   pointsSpent: number;
   xp: number;
@@ -26,7 +58,6 @@ export type ProgressState = {
   currentStreak: number;
   longestStreak: number;
   lastOpenDate?: string;
-  // Transient anti-grind energy (session-only, not persisted, not synced).
   petEnergy: number;
   lastRewardAt: number;
   nameCat: (name: string) => void;
@@ -38,8 +69,16 @@ export type ProgressState = {
 const STORAGE_KEY = 'progress-v2';
 const LEGACY_STORAGE_KEY = 'progress-v1';
 
+/**
+ * Computes the spendable coin balance from monotonic counters.
+ *
+ * @param earned - Lifetime points earned.
+ * @param spent - Lifetime points spent.
+ * @returns Non-negative balance (`max(0, earned - spent)`).
+ */
 const deriveBalance = (earned: number, spent: number): number => Math.max(0, earned - spent);
 
+/** Shape of fields written to MMKV by the persist middleware. */
 type PersistedProgress = {
   catName: string;
   hasNamedCat: boolean;
@@ -52,9 +91,14 @@ type PersistedProgress = {
   lastOpenDate?: string;
 };
 
-// One-time migration from the v1 schema, which stored a raw spendable `points`
-// balance instead of the earned/spent counters. Reads the legacy MMKV key
-// directly because zustand's `migrate` only sees state stored under the new key.
+/**
+ * One-time import from the legacy `progress-v1` MMKV key.
+ *
+ * The v1 schema stored a raw `points` balance. We map that into
+ * `lifetimePointsEarned` with `pointsSpent = 0` (no purchase history to recover).
+ *
+ * @returns Parsed legacy fields, or undefined if no v1 save exists or JSON is corrupt.
+ */
 function readLegacyProgress(): Partial<PersistedProgress> | undefined {
   const raw = zustandMmkvStorage.getItem(LEGACY_STORAGE_KEY);
 
@@ -86,6 +130,7 @@ function readLegacyProgress(): Partial<PersistedProgress> | undefined {
   }
 }
 
+/** Persisted player progression. MMKV key: `progress-v2`. */
 export const useProgressStore = create<ProgressState>()(
   persist(
     (set, get) => ({
@@ -190,7 +235,6 @@ export const useProgressStore = create<ProgressState>()(
       merge: (persistedState, currentState) => {
         let persisted = persistedState as Partial<PersistedProgress> | undefined;
 
-        // No v2 data yet: attempt to import an existing v1 save once.
         if (!persisted || Object.keys(persisted).length === 0) {
           persisted = readLegacyProgress() ?? persisted;
         }

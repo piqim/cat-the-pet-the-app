@@ -1,12 +1,31 @@
+/**
+ * @file StreakCelebration
+ * @module components/StreakCelebration
+ *
+ * Temporary banner shown when the user hits a streak milestone on daily open.
+ * Auto-dismisses after 4 seconds or on tap.
+ *
+ * Edge cases:
+ * - onDismiss is also called on unmount cleanup if timer fires during unmount.
+ * - Only rendered when hitMilestone is true from registerDailyOpen.
+ *
+ * Usage:
+ *   <StreakCelebration streak={7} rewardPoints={70} onDismiss={() => setCelebration(undefined)} />
+ */
+
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 type StreakCelebrationProps = {
+  /** Current streak day count. */
   streak: number;
+  /** Bonus points awarded for this milestone. */
   rewardPoints: number;
+  /** Called on tap or after auto-dismiss timeout. */
   onDismiss: () => void;
 };
 
+/** Milestone streak celebration banner with auto-dismiss. */
 export function StreakCelebration({ streak, rewardPoints, onDismiss }: StreakCelebrationProps) {
   useEffect(() => {
     const timeoutId = setTimeout(onDismiss, 4000);

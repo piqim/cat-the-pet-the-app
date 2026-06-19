@@ -1,8 +1,21 @@
+/**
+ * @file mergeSave.test
+ * @module services/cloud/__tests__/mergeSave
+ *
+ * Unit tests for the iCloud save merge logic (mergeSave).
+ * Covers monotonic counters, streak resolution, latest-wins, and rev clock.
+ */
+
 import { mergeSave } from '../mergeSave';
 import type { SaveDocumentV1 } from '../saveDocument';
 
 type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] };
 
+/**
+ * Factory for test save documents with sensible defaults.
+ *
+ * @param overrides - Partial fields to override defaults.
+ */
 function makeDoc(overrides: DeepPartial<SaveDocumentV1> = {}): SaveDocumentV1 {
   return {
     schemaVersion: 1,

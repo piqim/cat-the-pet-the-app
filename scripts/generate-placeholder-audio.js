@@ -1,14 +1,36 @@
 'use strict';
 
-// Generates placeholder, seamlessly-loopable WAV assets for the audio layer
-// (PRD §13 Q5). These are synthesized stand-ins — replace with real recordings
-// by dropping files of the same names into src/assets/audio/.
+/**
+ * @file generate-placeholder-audio
+ * @module scripts/generate-placeholder-audio
+ *
+ * Synthesizes seamlessly-loopable placeholder WAV files for the audio engine
+ * (purr.wav and ambient.wav). Run once during development or when assets are
+ * missing; replace output files with real recordings for production.
+ *
+ * Edge cases:
+ * - Loop durations chosen so all frequency components complete whole cycles
+ *   (1.0s purr, 2.0s ambient) to avoid audible seams.
+ * - Purr includes pseudo-random noise — output differs each run (acceptable
+ *   for placeholders).
+ * - Overwrites existing files in src/assets/audio/ without prompt.
+ *
+ * Usage:
+ *   node scripts/generate-placeholder-audio.js
+ */
 
 const fs = require('fs');
 const path = require('path');
 
 const SAMPLE_RATE = 44100;
 
+/**
+ * Writes mono 16-bit PCM samples to a WAV file.
+ *
+ * @param {string} filePath - Output .wav path.
+ * @param {Float32Array} samples - Normalized samples in [-1, 1].
+ * @returns {number} Duration in seconds.
+ */
 function writeWav(filePath, samples) {
   const numSamples = samples.length;
   const buffer = Buffer.alloc(44 + numSamples * 2);
@@ -18,8 +40,8 @@ function writeWav(filePath, samples) {
   buffer.write('WAVE', 8);
   buffer.write('fmt ', 12);
   buffer.writeUInt32LE(16, 16);
-  buffer.writeUInt16LE(1, 20); // PCM
-  buffer.writeUInt16LE(1, 22); // mono
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
   buffer.writeUInt32LE(SAMPLE_RATE, 24);
   buffer.writeUInt32LE(SAMPLE_RATE * 2, 28);
   buffer.writeUInt16LE(2, 32);
@@ -36,8 +58,11 @@ function writeWav(filePath, samples) {
   return numSamples / SAMPLE_RATE;
 }
 
-// Purr: 25 Hz amplitude-pulsed low rumble. 1.0s contains whole cycles of every
-// component (25/50/110/165 Hz) so the loop is seamless.
+/**
+ * Builds a 1.0s seamless purr loop (25 Hz amplitude-pulsed low rumble).
+ *
+ * @returns {Float32Array} Sample buffer.
+ */
 function buildPurr() {
   const duration = 1.0;
   const total = Math.round(SAMPLE_RATE * duration);
@@ -57,7 +82,11 @@ function buildPurr() {
   return samples;
 }
 
-// Ambient: very soft low room tone with a slow swell. 2.0s seamless loop.
+/**
+ * Builds a 2.0s seamless ambient room-tone loop.
+ *
+ * @returns {Float32Array} Sample buffer.
+ */
 function buildAmbient() {
   const duration = 2.0;
   const total = Math.round(SAMPLE_RATE * duration);

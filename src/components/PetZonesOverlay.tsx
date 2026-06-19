@@ -1,12 +1,32 @@
+/**
+ * @file PetZonesOverlay
+ * @module components/PetZonesOverlay
+ *
+ * Dev-only visual overlay showing pet-zone bounding boxes on the cat sprite.
+ * Rendered only when __DEV__ is true in PetScreen. pointerEvents="none" so
+ * touches pass through to the gesture handler.
+ *
+ * Edge cases:
+ * - Draws axis-aligned bounding boxes, not true polygon shapes — may look
+ *   larger than the actual hit area for non-rectangular zones.
+ * - Scale = size / 32 matches petController and hitTest grid.
+ *
+ * Usage:
+ *   {__DEV__ ? <PetZonesOverlay size={catSize} activeZoneId={activeZoneId} /> : null}
+ */
+
 import { StyleSheet, Text, View } from 'react-native';
 
 import { PET_ZONES, PetZoneId } from '../engine/hitTest';
 
 type PetZonesOverlayProps = {
+  /** Rendered cat sprite size in screen pixels. */
   size: number;
+  /** Currently active zone (highlighted yellow). */
   activeZoneId?: PetZoneId;
 };
 
+/** Dev overlay mapping PET_ZONES polygons to on-screen rectangles. */
 export function PetZonesOverlay({ size, activeZoneId }: PetZonesOverlayProps) {
   const scale = size / 32;
 
@@ -39,6 +59,12 @@ export function PetZonesOverlay({ size, activeZoneId }: PetZonesOverlayProps) {
   );
 }
 
+/**
+ * Computes the axis-aligned bounding box of a polygon.
+ *
+ * @param polygon - Zone vertices on the 32×32 grid.
+ * @returns Position and dimensions for the overlay View.
+ */
 function getPolygonBounds(polygon: { x: number; y: number }[]) {
   const xs = polygon.map((point) => point.x);
   const ys = polygon.map((point) => point.y);

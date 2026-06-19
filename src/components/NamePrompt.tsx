@@ -1,3 +1,21 @@
+/**
+ * @file NamePrompt
+ * @module components/NamePrompt
+ *
+ * Modal for naming the cat on first launch (onboarding) or renaming later.
+ * Submits to progressStore.nameCat via the onSubmit callback.
+ *
+ * Edge cases:
+ * - Onboarding: no Cancel button, onRequestClose disabled (must name cat).
+ * - Empty name falls back to 'Miso' in progressStore.nameCat.
+ * - MAX_NAME_LENGTH = 16 enforced by TextInput maxLength.
+ * - Draft resets to initialName each time the modal opens.
+ *
+ * Usage:
+ *   <NamePrompt visible={show} initialName={catName} isOnboarding={!hasNamedCat}
+ *     onSubmit={nameCat} onClose={() => setShow(false)} />
+ */
+
 import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -13,6 +31,7 @@ import {
 type NamePromptProps = {
   visible: boolean;
   initialName: string;
+  /** True on first launch — hides Cancel and blocks dismiss. */
   isOnboarding: boolean;
   onSubmit: (name: string) => void;
   onClose: () => void;
@@ -20,6 +39,7 @@ type NamePromptProps = {
 
 const MAX_NAME_LENGTH = 16;
 
+/** Modal for cat naming / renaming. */
 export function NamePrompt({
   visible,
   initialName,
@@ -35,6 +55,7 @@ export function NamePrompt({
     }
   }, [initialName, visible]);
 
+  /** Submits the draft name and closes the modal. */
   const handleSave = () => {
     onSubmit(draft);
     onClose();

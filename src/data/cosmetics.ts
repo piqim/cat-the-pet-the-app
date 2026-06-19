@@ -1,6 +1,46 @@
+/**
+ * @file cosmetics
+ * @module data/cosmetics
+ *
+ * Cosmetic item catalog: scenes (stage backdrops), hats, and collars.
+ * Each entry defines unlock requirements, shop price, and placeholder visuals
+ * used until final layer-separated art ships (PRD phase 7).
+ *
+ * Edge cases:
+ * - Items with `pricePoints: 0` are free and auto-owned on first launch
+ *   (see cosmeticsStore merge logic).
+ * - `assetKey` maps to future sprite layers; placeholder rendering uses
+ *   `swatch`, `glyph`, and `backgroundColor` instead.
+ * - `COSMETICS_BY_ID` is rebuilt at module load — duplicate IDs would silently
+ *   overwrite; keep IDs unique in the array below.
+ * - `isStreakReward` is reserved for future streak-exclusive items (unused).
+ *
+ * Usage:
+ *   import { COSMETICS, getCosmeticById } from '../data/cosmetics';
+ *   const hat = getCosmeticById('party-hat');
+ */
+
+/** Broad grouping used for shop section headers. */
 export type CosmeticCategory = 'hat' | 'collar' | 'scene';
+
+/** Render slot on the cat sprite or stage. One equipped item per slot. */
 export type CosmeticSlot = 'head' | 'collar' | 'scene';
 
+/**
+ * A single purchasable/equippable cosmetic item.
+ *
+ * @property id - Stable string key used in stores and save documents.
+ * @property category - Shop grouping (scene / hat / collar).
+ * @property slot - Which equip slot this item occupies.
+ * @property displayName - Human-readable name shown in the shop.
+ * @property assetKey - Future sprite layer filename (not yet wired to art).
+ * @property unlockLevel - Minimum player level before the item appears in shop.
+ * @property pricePoints - Coin cost; 0 means free.
+ * @property isStreakReward - Reserved: streak-exclusive items (not yet used).
+ * @property swatch - Hex color for shop chip and placeholder tint on cat.
+ * @property glyph - Optional emoji rendered on the placeholder cat layer.
+ * @property backgroundColor - Scene-only: stage backdrop color behind the cat.
+ */
 export type Cosmetic = {
   id: string;
   category: CosmeticCategory;
@@ -10,14 +50,15 @@ export type Cosmetic = {
   unlockLevel: number;
   pricePoints: number;
   isStreakReward?: boolean;
-  // Placeholder visuals used until final layer-separated art ships (PRD phase 7).
-  // `swatch` drives the shop chip + on-cat placeholder tint; `glyph` is an optional
-  // on-cat marker; scenes use `backgroundColor` for the stage backdrop.
   swatch: string;
   glyph?: string;
   backgroundColor?: string;
 };
 
+/**
+ * Full cosmetic catalog, ordered by category blocks (scenes → hats → collars).
+ * Shop iterates this array filtered by `unlockLevel` and ownership.
+ */
 export const COSMETICS: Cosmetic[] = [
   // Scenes (stage backdrop) ---------------------------------------------------
   {
@@ -136,16 +177,32 @@ export const COSMETICS: Cosmetic[] = [
   },
 ];
 
+/**
+ * O(1) lookup map built from {@link COSMETICS}. Keys are cosmetic `id` strings.
+ */
 export const COSMETICS_BY_ID: Record<string, Cosmetic> = Object.fromEntries(
   COSMETICS.map((item) => [item.id, item]),
 );
 
+/**
+ * Resolves a cosmetic by its stable ID.
+ *
+ * @param id - Cosmetic ID string, or undefined when no item is equipped.
+ * @returns The matching {@link Cosmetic}, or undefined if `id` is falsy or unknown.
+ *
+ * @example
+ * getCosmeticById('party-hat')  // → Cosmetic
+ * getCosmeticById(undefined)    // → undefined
+ * getCosmeticById('missing')    // → undefined
+ */
 export function getCosmeticById(id: string | undefined): Cosmetic | undefined {
   return id ? COSMETICS_BY_ID[id] : undefined;
 }
 
+/** Display order for shop category sections. */
 export const COSMETIC_CATEGORY_ORDER: CosmeticCategory[] = ['scene', 'hat', 'collar'];
 
+/** Human-readable labels for each {@link CosmeticCategory}. */
 export const COSMETIC_CATEGORY_LABELS: Record<CosmeticCategory, string> = {
   scene: 'Scenes',
   hat: 'Hats',

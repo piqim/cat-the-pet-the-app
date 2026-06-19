@@ -1,16 +1,41 @@
+/**
+ * @file saveDocument
+ * @module services/cloud/saveDocument
+ *
+ * Versioned save document that mirrors all three Zustand stores into a single
+ * JSON blob for iCloud KVS. One key (`save-doc-v1`), well within KVS limits.
+ *
+ * Edge cases:
+ * - parseSaveDocument returns null on corrupt/missing/wrong-schema data.
+ * - applySaveDocument overwrites all three stores synchronously (triggers MMKV persist).
+ * - Derived `points` balance is recomputed on apply (never stored in the document).
+ * - stripUndefined removes empty equip slots before serialization.
+ *
+ * Usage:
+ *   const doc = composeSaveDocument(rev);
+ *   iCloudKvs.setItem(SAVE_DOC_KEY, serializeSaveDocument(doc));
+ */
+
 import { CosmeticSlot } from '../../data/cosmetics';
 import { getLevelForXp } from '../../data/levelCurve';
 import { useCosmeticsStore } from '../../stores/cosmeticsStore';
 import { useProgressStore } from '../../stores/progressStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 
+/** iCloud KVS key for the serialized save document. */
 export const SAVE_DOC_KEY = 'save-doc-v1';
+
+/** Current schema version; bump when the document shape changes. */
 export const SAVE_DOC_SCHEMA_VERSION = 1 as const;
 
+/**
+ * Complete save snapshot synced across devices.
+ *
+ * @property rev - Logical clock for latest-wins conflict resolution.
+ * @property updatedAt - Wall-clock tiebreaker (ms since epoch).
+ */
 export type SaveDocumentV1 = {
   schemaVersion: typeof SAVE_DOC_SCHEMA_VERSION;
-  // Logical clock: incremented on every merge/local push. Used as the primary
-  // tiebreaker for latest-wins fields, independent of wall-clock skew.
   rev: number;
   updatedAt: number;
   progress: {
@@ -34,7 +59,13 @@ export type SaveDocumentV1 = {
   };
 };
 
-/** Snapshot the current store state into a save document. */
+/**
+ * Snapshots current Zustand store state into a save document.
+ *
+ * @param rev - Logical revision to stamp on the document.
+ * @param updatedAt - Wall-clock timestamp (default: now).
+ * @returns Composed SaveDocumentV1.
+ */
 export function composeSaveDocument(rev: number, updatedAt: number = Date.now()): SaveDocumentV1 {
   const progress = useProgressStore.getState();
   const cosmetics = useCosmeticsStore.getState();
@@ -66,7 +97,11 @@ export function composeSaveDocument(rev: number, updatedAt: number = Date.now())
   };
 }
 
-/** Push a merged save document back into the stores (which persists to MMKV). */
+/**
+ * Writes a merged save document into all three stores (and MMKV via persist).
+ *
+ * @param doc - Merged or remote save document to apply.
+ */
 export function applySaveDocument(doc: SaveDocumentV1): void {
   const balance = Math.max(0, doc.progress.lifetimePointsEarned - doc.progress.pointsSpent);
 
@@ -95,11 +130,22 @@ export function applySaveDocument(doc: SaveDocumentV1): void {
   });
 }
 
+/**
+ * Serializes a save document to a JSON string for KVS storage.
+ *
+ * @param doc - Document to serialize.
+ * @returns JSON string.
+ */
 export function serializeSaveDocument(doc: SaveDocumentV1): string {
   return JSON.stringify(doc);
 }
 
-/** Parse and shallowly validate a stored document; returns null if unusable. */
+/**
+ * Parses and validates a stored save document.
+ *
+ * @param raw - JSON string from KVS, or null if missing.
+ * @returns Parsed document, or null if corrupt or wrong schema version.
+ */
 export function parseSaveDocument(raw: string | null): SaveDocumentV1 | null {
   if (!raw) {
     return null;
@@ -125,6 +171,12 @@ export function parseSaveDocument(raw: string | null): SaveDocumentV1 | null {
   }
 }
 
+/**
+ * Removes undefined equip slots so JSON serialization is clean.
+ *
+ * @param equipped - Partial equip map from cosmeticsStore.
+ * @returns Record with only string values.
+ */
 function stripUndefined(equipped: Partial<Record<CosmeticSlot, string>>): Record<string, string> {
   const result: Record<string, string> = {};
 

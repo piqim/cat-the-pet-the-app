@@ -1,3 +1,19 @@
+/**
+ * @file SettingsSheet
+ * @module components/SettingsSheet
+ *
+ * Bottom-sheet modal for sound, haptics, notification toggles, iCloud sync
+ * status, and cat rename entry point.
+ *
+ * Edge cases:
+ * - iCloud row is tappable to force syncNow() even when status is 'error'.
+ * - Sync status via useSyncExternalStore (no React context needed).
+ * - Notification toggle does not request permission — scheduling handles that.
+ *
+ * Usage:
+ *   <SettingsSheet visible={open} onClose={close} onRenameCat={openRename} />
+ */
+
 import { useSyncExternalStore } from 'react';
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
@@ -7,9 +23,11 @@ import { useSettingsStore } from '../stores/settingsStore';
 type SettingsSheetProps = {
   visible: boolean;
   onClose: () => void;
+  /** Opens NamePrompt after closing settings. */
   onRenameCat: () => void;
 };
 
+/** Settings bottom sheet with toggles, iCloud status, and rename entry. */
 export function SettingsSheet({ visible, onClose, onRenameCat }: SettingsSheetProps) {
   const soundEnabled = useSettingsStore((state) => state.soundEnabled);
   const hapticsEnabled = useSettingsStore((state) => state.hapticsEnabled);
@@ -73,6 +91,7 @@ export function SettingsSheet({ visible, onClose, onRenameCat }: SettingsSheetPr
   );
 }
 
+/** Human-readable short label for each sync status in the iCloud row. */
 const SYNC_VALUE: Record<SyncStatus, string> = {
   idle: 'Starting',
   syncing: 'Syncing',
@@ -81,6 +100,12 @@ const SYNC_VALUE: Record<SyncStatus, string> = {
   error: 'Retry',
 };
 
+/**
+ * Returns a user-facing description for the iCloud sync status row.
+ *
+ * @param status - Current sync status from cloudSyncService.
+ * @param lastSyncedAt - Timestamp of last successful sync, if any.
+ */
 function describeSync(status: SyncStatus, lastSyncedAt?: number): string {
   switch (status) {
     case 'synced':
@@ -98,10 +123,16 @@ function describeSync(status: SyncStatus, lastSyncedAt?: number): string {
   }
 }
 
+/**
+ * Formats a timestamp as a short local time string.
+ *
+ * @param timestamp - Milliseconds since epoch.
+ */
 function formatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+/** Single settings toggle row with label, description, and Switch. */
 function ToggleRow({
   label,
   description,

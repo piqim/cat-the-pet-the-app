@@ -1,3 +1,24 @@
+/**
+ * @file iCloudKvs
+ * @module services/cloud/iCloudKvs
+ *
+ * Thin, swappable abstraction over Apple's NSUbiquitousKeyValueStore via
+ * @nauverse/expo-cloud-settings. All methods are crash-safe and degrade to
+ * no-ops when iCloud is unavailable.
+ *
+ * Edge cases:
+ * - Android: all methods no-op (isAvailable → false, getItem → null).
+ * - iOS without signed-in iCloud: isAvailable → false.
+ * - Native exceptions are caught and swallowed — cloud failure must never crash gameplay.
+ * - KVS does not sync in the iOS Simulator; test on a physical device.
+ * - KVS limits: 1 MB total, 1024 keys, 1 MB per key.
+ *
+ * Usage:
+ *   if (iCloudKvs.isAvailable()) {
+ *     iCloudKvs.setItem('save-doc-v1', json);
+ *   }
+ */
+
 import { Platform } from 'react-native';
 
 import {
@@ -9,25 +30,26 @@ import {
   setString as nativeSetString,
 } from '@nauverse/expo-cloud-settings';
 
+/** Why the KVS reported a change event. */
 export type CloudKvsChangeReason =
   | 'serverChange'
   | 'initialSync'
   | 'quotaViolation'
   | 'accountChange';
 
+/** Payload from addChangeListener when iCloud KVS changes. */
 export type CloudKvsChangeEvent = {
   readonly changedKeys: ReadonlyArray<string>;
   readonly reason: CloudKvsChangeReason;
 };
 
+/** Handle returned by addChangeListener; call remove() to unsubscribe. */
 export type CloudKvsSubscription = {
   remove: () => void;
 };
 
 /**
- * Thin, swappable abstraction over the iCloud Key-Value Store. All methods are
- * crash-safe: on a platform without iCloud (Android, or iOS without a signed-in
- * account) they degrade to no-ops so the app keeps running on local MMKV.
+ * Interface for the cloud key-value store. Implemented by {@link iCloudKvs}.
  */
 export type CloudKvs = {
   isAvailable: () => boolean;
@@ -38,10 +60,14 @@ export type CloudKvs = {
   addChangeListener: (callback: (event: CloudKvsChangeEvent) => void) => CloudKvsSubscription;
 };
 
+/** No-op subscription returned on non-iOS platforms. */
 const NOOP_SUBSCRIPTION: CloudKvsSubscription = { remove: () => undefined };
 
 const isIos = Platform.OS === 'ios';
 
+/**
+ * Default CloudKvs implementation backed by iCloud on iOS.
+ */
 export const iCloudKvs: CloudKvs = {
   isAvailable: () => {
     if (!isIos) {

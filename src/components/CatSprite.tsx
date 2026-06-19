@@ -1,3 +1,21 @@
+/**
+ * @file CatSprite
+ * @module components/CatSprite
+ *
+ * Layer-separated placeholder cat rendered with Skia primitives. Each draw
+ * group maps to a future art layer (body, tail, ears, face) per PRD §5.1.
+ * Reacts to animation state and shows equipped cosmetic placeholders.
+ *
+ * Edge cases:
+ * - Placeholder palette/glyphs replaced when final PNG layers ship.
+ * - Idle blink on last frame of 4-frame idle cycle.
+ * - Cosmetic layers are View overlays (not Skia) until real art is wired.
+ * - reactionGlow is a non-interactive View overlay for mood tinting.
+ *
+ * Usage:
+ *   <CatSprite activeZoneId={zone} animationState={state} size={340} />
+ */
+
 import { useEffect, useMemo, useState } from 'react';
 import {
   Canvas,
@@ -33,9 +51,11 @@ const COLORS = {
 type CatSpriteProps = {
   activeZoneId?: PetZoneId;
   animationState: CatAnimationState;
+  /** Rendered width and height in screen pixels. */
   size: number;
 };
 
+/** Main cat sprite with Skia body, cosmetic overlays, and reaction transforms. */
 export function CatSprite({ activeZoneId, animationState, size }: CatSpriteProps) {
   const [frameIndex, setFrameIndex] = useState(0);
   const equipped = useCosmeticsStore((state) => state.equipped);
@@ -80,9 +100,8 @@ type EarMode = 'idle' | 'perk' | 'flat';
 type TailMode = 'sway' | 'wrap' | 'stiff';
 
 /**
- * Layer-separated placeholder cat (PRD §5.1). Each draw group maps to a final
- * art layer — body, tail, ears (L/R), eyes — so the production swap replaces
- * primitives with PNGs without touching the reaction wiring.
+ * Skia-drawn placeholder cat with layered body parts.
+ * Maps 1:1 to future PNG art layers for production swap.
  */
 function PlaceholderCat({
   size,
@@ -125,6 +144,7 @@ function PlaceholderCat({
   );
 }
 
+/** Animated tail path with sway, wrap, or stiff modes. */
 function TailLayer({ s, mode, frameIndex }: { s: number; mode: TailMode; frameIndex: number }) {
   const swayAngle = (frameIndex - 1.5) * 0.07;
   const angle = mode === 'wrap' ? -0.55 : mode === 'stiff' ? -0.25 : swayAngle;
@@ -148,6 +168,7 @@ function TailLayer({ s, mode, frameIndex }: { s: number; mode: TailMode; frameIn
   );
 }
 
+/** Left and right ear triangles with perk/flat/idle positioning. */
 function EarsLayer({ s, mode }: { s: number; mode: EarMode }) {
   // Apex lift/spread differs per mode: perk raises + spreads, flat drops back.
   const lift = mode === 'perk' ? 0.05 : mode === 'flat' ? -0.05 : 0;
@@ -171,6 +192,7 @@ function EarsLayer({ s, mode }: { s: number; mode: EarMode }) {
   );
 }
 
+/** Eyes, nose, whiskers, blush, and annoyed brow lines. */
 function FaceLayer({
   s,
   eyeMode,
@@ -267,6 +289,14 @@ function FaceLayer({
   );
 }
 
+/**
+ * Renders a single eye in the given mode.
+ *
+ * @param cx - Eye center X (sprite pixels).
+ * @param cy - Eye center Y (sprite pixels).
+ * @param s - Sprite size.
+ * @param mode - Eye expression mode.
+ */
 function renderEye(cx: number, cy: number, s: number, mode: EyeMode) {
   const stroke = 0.022 * s;
 
@@ -337,6 +367,12 @@ function renderEye(cx: number, cy: number, s: number, mode: EyeMode) {
   }
 }
 
+/**
+ * Maps animation state + idle frame to an eye expression.
+ *
+ * @param animationState - Current cat animation state.
+ * @param frameIndex - Idle animation frame (0–3).
+ */
 function getEyeMode(animationState: CatAnimationState, frameIndex: number): EyeMode {
   switch (animationState) {
     case 'noticing':
@@ -357,6 +393,7 @@ function getEyeMode(animationState: CatAnimationState, frameIndex: number): EyeM
   }
 }
 
+/** Maps animation state to ear posture (idle / perk / flat). */
 function getEarMode(animationState: CatAnimationState): EarMode {
   switch (animationState) {
     case 'annoyed':
@@ -371,6 +408,7 @@ function getEarMode(animationState: CatAnimationState): EarMode {
   }
 }
 
+/** Maps animation state to tail motion mode (sway / wrap / stiff). */
 function getTailMode(animationState: CatAnimationState): TailMode {
   switch (animationState) {
     case 'purringPeak':
@@ -383,6 +421,10 @@ function getTailMode(animationState: CatAnimationState): TailMode {
   }
 }
 
+/**
+ * Whole-sprite transform style for the current animation reaction.
+ * Applied to the root View wrapping Canvas + cosmetics.
+ */
 function getReactionStyle(
   animationState: CatAnimationState,
   activeZoneId: PetZoneId | undefined,
@@ -432,6 +474,12 @@ function getReactionStyle(
   }
 }
 
+/**
+ * Horizontal lean direction based on which side of the cat is being petted.
+ *
+ * @param activeZoneId - Currently active pet zone.
+ * @returns -1 (left), 0 (center), or 1 (right).
+ */
 function getZoneLean(activeZoneId: PetZoneId | undefined): number {
   switch (activeZoneId) {
     case 'leftChest':
@@ -447,6 +495,7 @@ function getZoneLean(activeZoneId: PetZoneId | undefined): number {
   }
 }
 
+/** Placeholder cosmetic overlay (glyph on swatch chip) until real art ships. */
 function CosmeticLayer({
   cosmetic,
   slotStyle,

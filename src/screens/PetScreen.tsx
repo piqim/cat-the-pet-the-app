@@ -1,3 +1,23 @@
+/**
+ * @file PetScreen
+ * @module screens/PetScreen
+ *
+ * Main game screen: orchestrates petting gestures, rewards, animation, audio,
+ * haptics, daily streak, shop, settings, and onboarding name prompt.
+ *
+ * Edge cases:
+ * - dailyOpenHandledRef ensures registerDailyOpen runs once per session.
+ * - ZONE_LOCK_MS throttles rewards to prevent rapid-fire coin farming.
+ * - Touch outside sprite bounds resets to idle and clears stroke anchor.
+ * - Negative zones (eyes) play annoyed haptic and reset goodStrokeCount.
+ * - Chin zone uses FAVORITE_ZONE_MULTIPLIER for bonus rewards.
+ * - Cat size scales to catAreaWidth (max 340px) for larger hit targets.
+ * - __DEV__ overlay and debug text gated behind development builds.
+ *
+ * Usage:
+ *   <PetScreen />  // rendered from App.tsx
+ */
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -27,11 +47,12 @@ import { useCosmeticsStore } from '../stores/cosmeticsStore';
 import { useProgressStore } from '../stores/progressStore';
 import { useSettingsStore } from '../stores/settingsStore';
 
-// Cat scales to fill the petting area width (bigger sprite => bigger, easier
-// hit zones), capped so it stays reasonable on large devices.
+/** Maximum rendered cat sprite size in screen pixels. */
 const MAX_CAT_SIZE = 340;
+/** Vertical offset of the cat sprite within the petting area. */
 const CAT_TOP_MARGIN = 24;
 
+/** Maps each pet zone to a haptic pattern for tactile feedback. */
 const HAPTIC_PATTERN_BY_ZONE: Record<PetZoneId, HapticPattern> = {
   leftPaw: 'paw',
   leftChest: 'chest',
@@ -44,6 +65,7 @@ const HAPTIC_PATTERN_BY_ZONE: Record<PetZoneId, HapticPattern> = {
   eyes: 'annoyed',
 };
 
+/** Main game screen composing all gameplay systems. */
 export function PetScreen() {
   const [catAreaWidth, setCatAreaWidth] = useState(0);
   const [activeZoneId, setActiveZoneId] = useState<PetZoneId>();
@@ -126,6 +148,10 @@ export function PetScreen() {
     [catAreaWidth, catSize],
   );
 
+  /**
+   * Processes a single pet gesture frame: hit-test, animate, haptic, reward.
+   * Called from the UI thread via runOnJS on pan begin/update.
+   */
   const handlePetMove = useCallback(
     (x: number, y: number) => {
       if (releaseTimeoutRef.current) {
@@ -201,6 +227,7 @@ export function PetScreen() {
     [grantPetReward, spriteBounds],
   );
 
+  /** Handles finger lift: reset stroke state, play release animation, fade to idle. */
   const handlePetEnd = useCallback(() => {
     strokeAnchorRef.current = undefined;
     goodStrokeCountRef.current = 0;
@@ -317,6 +344,12 @@ export function PetScreen() {
   );
 }
 
+/**
+ * Maps cat animation state to purr audio volume (0–1).
+ *
+ * @param animationState - Current animation state from animationController.
+ * @returns Purr level for audioEngine.setPurrLevel.
+ */
 function getPurrLevel(animationState: CatAnimationState): number {
   switch (animationState) {
     case 'purringPeak':

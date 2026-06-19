@@ -1,5 +1,7 @@
+import { useSyncExternalStore } from 'react';
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
+import { cloudSyncService, SyncStatus } from '../services/cloud/cloudSyncService';
 import { useSettingsStore } from '../stores/settingsStore';
 
 type SettingsSheetProps = {
@@ -15,6 +17,7 @@ export function SettingsSheet({ visible, onClose, onRenameCat }: SettingsSheetPr
   const setSoundEnabled = useSettingsStore((state) => state.setSoundEnabled);
   const setHapticsEnabled = useSettingsStore((state) => state.setHapticsEnabled);
   const setNotificationsEnabled = useSettingsStore((state) => state.setNotificationsEnabled);
+  const sync = useSyncExternalStore(cloudSyncService.subscribe, cloudSyncService.getSnapshot);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -41,6 +44,21 @@ export function SettingsSheet({ visible, onClose, onRenameCat }: SettingsSheetPr
             onValueChange={setNotificationsEnabled}
           />
 
+          <Pressable
+            style={styles.row}
+            onPress={() => {
+              void cloudSyncService.syncNow();
+            }}
+          >
+            <View style={styles.rowText}>
+              <Text style={styles.rowLabel}>iCloud Sync</Text>
+              <Text style={styles.rowDescription}>{describeSync(sync.status, sync.lastSyncedAt)}</Text>
+            </View>
+            <Text style={[styles.syncValue, sync.status === 'localOnly' && styles.syncValueMuted]}>
+              {SYNC_VALUE[sync.status]}
+            </Text>
+          </Pressable>
+
           <Pressable style={styles.renameRow} onPress={onRenameCat}>
             <Text style={styles.renameText}>Rename cat</Text>
             <Text style={styles.chevron}>{'\u203A'}</Text>
@@ -53,6 +71,35 @@ export function SettingsSheet({ visible, onClose, onRenameCat }: SettingsSheetPr
       </View>
     </Modal>
   );
+}
+
+const SYNC_VALUE: Record<SyncStatus, string> = {
+  idle: 'Starting',
+  syncing: 'Syncing',
+  synced: 'On',
+  localOnly: 'This device',
+  error: 'Retry',
+};
+
+function describeSync(status: SyncStatus, lastSyncedAt?: number): string {
+  switch (status) {
+    case 'synced':
+      return lastSyncedAt
+        ? `Backed up to iCloud - last synced ${formatTime(lastSyncedAt)}`
+        : 'Progress backs up to your iCloud';
+    case 'syncing':
+      return 'Backing up your progress';
+    case 'localOnly':
+      return 'Sign in to iCloud to back up and sync devices';
+    case 'error':
+      return 'Could not reach iCloud - tap to retry';
+    default:
+      return 'Preparing iCloud sync';
+  }
+}
+
+function formatTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 function ToggleRow({
@@ -123,6 +170,14 @@ const styles = StyleSheet.create({
     color: '#9a7c64',
     fontSize: 13,
     marginTop: 2,
+  },
+  syncValue: {
+    color: '#a85a2a',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  syncValueMuted: {
+    color: '#b8a48f',
   },
   renameRow: {
     alignItems: 'center',

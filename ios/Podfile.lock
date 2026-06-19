@@ -41,6 +41,8 @@ PODS:
     - ExpoModulesCore
   - ExpoAudio (56.0.12):
     - ExpoModulesCore
+  - ExpoCloudSettings (1.3.1):
+    - ExpoModulesCore
   - ExpoDomWebView (56.0.5):
     - ExpoModulesCore
   - ExpoFileSystem (56.0.8):
@@ -2862,6 +2864,7 @@ DEPENDENCIES:
   - Expo (from `../node_modules/expo`)
   - ExpoAsset (from `../node_modules/expo-asset/ios`)
   - ExpoAudio (from `../node_modules/expo-audio/ios`)
+  - "ExpoCloudSettings (from `../node_modules/@nauverse/expo-cloud-settings/ios`)"
   - "ExpoDomWebView (from `../node_modules/@expo/dom-webview/ios`)"
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../node_modules/expo-font/ios`)
@@ -2978,6 +2981,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-asset/ios"
   ExpoAudio:
     :path: "../node_modules/expo-audio/ios"
+  ExpoCloudSettings:
+    :path: "../node_modules/@nauverse/expo-cloud-settings/ios"
   ExpoDomWebView:
     :path: "../node_modules/@expo/dom-webview/ios"
   ExpoFileSystem:
@@ -3174,6 +3179,7 @@ SPEC CHECKSUMS:
   Expo: ce001d87a81d10fc6d4aa397a1e042ca8981c83a
   ExpoAsset: 1e436e9aee7015d5c6d203c1ddfe1adbb521a623
   ExpoAudio: 8c4882515dee2f71d519ee64bb05c14945a5e1a2
+  ExpoCloudSettings: 459d74bede40bd22429d5afa231ffa0e40bb95f4
   ExpoDomWebView: 27205be8754f9992913b8a9a08e65019f2207075
   ExpoFileSystem: 9dc04ec1e11bc3c7b965d7feb2de12c789755c7b
   ExpoFont: 274487aa78f8c65d6551e2558eca3ec6ce3432ce

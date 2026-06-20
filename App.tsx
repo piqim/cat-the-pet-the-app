@@ -19,6 +19,7 @@ import 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { PetScreen } from './src/screens/PetScreen';
 import { cloudSyncService } from './src/services/cloud/cloudSyncService';
@@ -32,9 +33,11 @@ export default function App() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <PetScreen />
-      <StatusBar style="dark" />
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <PetScreen />
+        <StatusBar style="dark" />
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

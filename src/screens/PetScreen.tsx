@@ -12,6 +12,8 @@
  * - Negative zones (eyes) play annoyed haptic and reset goodStrokeCount.
  * - Chin zone uses FAVORITE_ZONE_MULTIPLIER for bonus rewards.
  * - Cat size scales to catAreaWidth (max 340px) for larger hit targets.
+ * - Footer is pinned to the bottom with safe-area inset padding.
+ * - Ad banner slot is 50pt tall (standard AdMob BANNER size) above Open Shop.
  * - __DEV__ overlay and debug text gated behind development builds.
  *
  * Usage:
@@ -22,6 +24,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CatSprite } from '../components/CatSprite';
 import { NamePrompt } from '../components/NamePrompt';
@@ -51,6 +54,10 @@ import { useSettingsStore } from '../stores/settingsStore';
 const MAX_CAT_SIZE = 340;
 /** Vertical offset of the cat sprite within the petting area. */
 const CAT_TOP_MARGIN = 24;
+/** Standard anchored banner height (AdMob BANNER / adaptive, 320×50). */
+const AD_BANNER_HEIGHT = 50;
+/** Minimum padding below footer content when safe-area inset is zero. */
+const FOOTER_PADDING_MIN = 12;
 
 /** Maps each pet zone to a haptic pattern for tactile feedback. */
 const HAPTIC_PATTERN_BY_ZONE: Record<PetZoneId, HapticPattern> = {
@@ -67,6 +74,7 @@ const HAPTIC_PATTERN_BY_ZONE: Record<PetZoneId, HapticPattern> = {
 
 /** Main game screen composing all gameplay systems. */
 export function PetScreen() {
+  const insets = useSafeAreaInsets();
   const [catAreaWidth, setCatAreaWidth] = useState(0);
   const [activeZoneId, setActiveZoneId] = useState<PetZoneId>();
   const [animationState, setAnimationState] = useState<CatAnimationState>('idle');
@@ -260,67 +268,83 @@ export function PetScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable onPress={() => setNamePromptVisible(true)} hitSlop={8}>
-          <Text style={styles.catName}>{catName}</Text>
-          <Text style={styles.subtitle}>Pet gently. Avoid the eyes.</Text>
-        </Pressable>
-        <View style={styles.headerRight}>
-          <View style={styles.headerTopRow}>
-            <View style={styles.streakPill}>
-              <Text style={styles.streakText}>{'\u{1F525}'} {currentStreak}</Text>
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <Pressable onPress={() => setNamePromptVisible(true)} hitSlop={8}>
+            <Text style={styles.catName}>{catName}</Text>
+            <Text style={styles.subtitle}>Pet gently. Avoid the eyes.</Text>
+          </Pressable>
+          <View style={styles.headerRight}>
+            <View style={styles.headerTopRow}>
+              <View style={styles.streakPill}>
+                <Text style={styles.streakText}>{'\u{1F525}'} {currentStreak}</Text>
+              </View>
+              <Pressable
+                style={styles.iconButton}
+                onPress={() => setSettingsVisible(true)}
+                hitSlop={8}
+              >
+                <Text style={styles.iconButtonText}>{'\u2699'}</Text>
+              </Pressable>
             </View>
-            <Pressable
-              style={styles.iconButton}
-              onPress={() => setSettingsVisible(true)}
-              hitSlop={8}
-            >
-              <Text style={styles.iconButtonText}>{'\u2699'}</Text>
-            </Pressable>
+            <PointsCounter points={points} />
           </View>
-          <PointsCounter points={points} />
         </View>
-      </View>
 
-      <XPBar xp={xp} level={level} />
+        <XPBar xp={xp} level={level} />
 
-      {celebration ? (
-        <StreakCelebration
-          streak={celebration.streak}
-          rewardPoints={celebration.rewardPoints}
-          onDismiss={() => setCelebration(undefined)}
-        />
-      ) : null}
+        {celebration ? (
+          <StreakCelebration
+            streak={celebration.streak}
+            rewardPoints={celebration.rewardPoints}
+            onDismiss={() => setCelebration(undefined)}
+          />
+        ) : null}
 
-      <GestureDetector gesture={panGesture}>
-        <View
-          style={[
-            styles.catArea,
-            { backgroundColor: sceneBackground, height: catSize + CAT_TOP_MARGIN * 2 },
-          ]}
-          onLayout={(event) => setCatAreaWidth(event.nativeEvent.layout.width)}
-        >
+        <GestureDetector gesture={panGesture}>
           <View
             style={[
-              styles.catStage,
-              { width: catSize, height: catSize, left: spriteBounds.x, top: spriteBounds.y },
+              styles.catArea,
+              {
+                backgroundColor: sceneBackground,
+                minHeight: catSize + CAT_TOP_MARGIN * 2,
+              },
             ]}
+            onLayout={(event) => setCatAreaWidth(event.nativeEvent.layout.width)}
           >
-            <CatSprite activeZoneId={activeZoneId} animationState={animationState} size={catSize} />
-            {__DEV__ ? <PetZonesOverlay size={catSize} activeZoneId={activeZoneId} /> : null}
+            <View
+              style={[
+                styles.catStage,
+                { width: catSize, height: catSize, left: spriteBounds.x, top: spriteBounds.y },
+              ]}
+            >
+              <CatSprite activeZoneId={activeZoneId} animationState={animationState} size={catSize} />
+              {__DEV__ ? <PetZonesOverlay size={catSize} activeZoneId={activeZoneId} /> : null}
+            </View>
           </View>
+        </GestureDetector>
+
+        {__DEV__ ? (
+          <Text style={styles.debugText}>
+            Active zone: {activeZoneId ? activeZoneId : 'none'} | State: {animationState}
+          </Text>
+        ) : null}
+      </View>
+
+      <View
+        style={[
+          styles.footer,
+          { paddingBottom: Math.max(insets.bottom, FOOTER_PADDING_MIN) },
+        ]}
+      >
+        <View style={styles.adBannerSlot}>
+          <Text style={styles.adBannerLabel}>Banner Ad</Text>
         </View>
-      </GestureDetector>
 
-      <Pressable style={styles.shopButton} onPress={() => setShopVisible(true)}>
-        <Text style={styles.shopButtonText}>Open Shop</Text>
-      </Pressable>
-
-      {__DEV__ ? (
-        <Text style={styles.debugText}>
-          Active zone: {activeZoneId ? activeZoneId : 'none'} | State: {animationState}
-        </Text>
-      ) : null}
+        <Pressable style={styles.shopButton} onPress={() => setShopVisible(true)}>
+          <Text style={styles.shopButtonText}>Open Shop</Text>
+        </Pressable>
+      </View>
 
       <Shop visible={shopVisible} onClose={() => setShopVisible(false)} />
 
@@ -367,8 +391,11 @@ const styles = StyleSheet.create({
   screen: {
     backgroundColor: '#fff2df',
     flex: 1,
+  },
+  content: {
+    flex: 1,
     gap: 18,
-    padding: 24,
+    paddingHorizontal: 24,
     paddingTop: 72,
   },
   header: {
@@ -420,16 +447,37 @@ const styles = StyleSheet.create({
   },
   catArea: {
     borderRadius: 24,
+    flex: 1,
     overflow: 'hidden',
     position: 'relative',
   },
+  footer: {
+    gap: 12,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+  },
+  adBannerSlot: {
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderColor: '#e0d2bd',
+    borderRadius: 8,
+    borderWidth: 1,
+    height: AD_BANNER_HEIGHT,
+    justifyContent: 'center',
+    width: '100%',
+  },
+  adBannerLabel: {
+    color: '#b8a48f',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   shopButton: {
     alignItems: 'center',
-    alignSelf: 'center',
     backgroundColor: '#4a3528',
     borderRadius: 999,
     paddingHorizontal: 28,
     paddingVertical: 12,
+    width: '100%',
   },
   shopButtonText: {
     color: '#fff2df',
